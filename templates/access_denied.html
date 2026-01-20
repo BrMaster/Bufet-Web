@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access Denied</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #fff5f5; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    .message { background: #fff; padding: 60px 48px; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); text-align: center; max-width: 520px; width: 100%; border-top: 4px solid #dc2626; }
+    .icon { font-size: 80px; color: #dc2626; margin-bottom: 20px; }
+    h1 { margin: 0 0 12px; font-size: 32px; color: #dc2626; }
+    p { margin: 0 0 24px; color: #666; font-size: 16px; line-height: 1.6; }
+    a.button { display: inline-block; padding: 14px 26px; background: #0077cc; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; transition: transform 0.1s ease, box-shadow 0.2s ease; }
+    a.button:hover { box-shadow: 0 10px 20px rgba(0,119,204,0.25); transform: translateY(-1px); }
+    a.button:active { transform: translateY(0); box-shadow: 0 6px 14px rgba(0,119,204,0.2); }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <div class="icon">🚫</div>
+    <h1>Access Denied</h1>
+    <p>You must scan a valid QR code to access this page.</p>
+    <p style="font-size: 14px; color: #999;">This page can only be accessed immediately after scanning a valid QR code pass.</p>
+    <a class="button" href="/logged-in/">Scan QR Code</a>
+  </div>
+</body>
+</html>

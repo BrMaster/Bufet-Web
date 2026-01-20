@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .passes-section {
+            margin-top: 40px;
+            border-top: 2px solid #f0f0f0;
+            padding-top: 30px;
+        }
+        .passes-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .pass-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .pass-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+        .pass-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .no-passes {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+        .btn-reset {
+            padding: 8px 16px;
+            background: #ffc107;
+            color: #333;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .btn-reset:hover {
+            background: #ffb300;
+            transform: translateY(-1px);
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+        .search-box {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .search-results-info {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Generate QR Code Pass</h1>
+        
+        {% if error %}
+        <div class="error-message">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="user_identifier">User Identifier/Name</label>
+                <input type="text" id="user_identifier" name="user_identifier" required placeholder="e.g., John Smith">
+            </div>
+            
+            <button type="submit">Generate QR Code Pass</button>
+        </form>
+        
+        {% if passes %}
+        <div class="passes-section">
+            <h2>All Generated Passes</h2>
+            
+            <div class="search-box">
+                <form method="GET">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        placeholder="🔍 Search by user name..." 
+                        value="{{ search_query }}"
+                        autocomplete="off"
+                    >
+                </form>
+                {% if search_query %}
+                <div class="search-results-info">
+                    Showing results for "{{ search_query }}" - <a href="/generate-qr/" style="color: #667eea;">Clear search</a>
+                </div>
+                {% endif %}
+            </div>
+            {% for pass in passes %}
+            <div class="pass-item">
+                <div class="pass-info">
+                    <div>
+                        <strong>User:</strong> {{ pass.user_identifier }}
+                    </div>
+                    <div>
+                        <strong>Created:</strong> {{ pass.created_at|date:"Y-m-d H:i" }}
+                    </div>
+                    <div>
+                        <strong>Expires:</strong> {{ pass.expires_at|date:"Y-m-d H:i" }}
+                    </div>
+                    <div>
+                        <strong>Uses:</strong> {{ pass.use_count }}
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    {% if pass.is_active %}
+                        <span class="pass-status status-active">Active</span>
+                    {% else %}
+                        <span class="pass-status status-inactive">Inactive</span>
+                    {% endif %}
+                    
+                    <form method="POST" style="display: inline-block; margin-left: 10px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="reset_pass_id" value="{{ pass.id }}">
+                        <button type="submit" class="btn-reset" onclick="return confirm('Reset QR code for {{ pass.user_identifier }}? The old code will no longer work.')">
+                            🔄 Reset Code
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="passes-section">
+            <h2>All Generated Passes</h2>
+            
+            <div class="search-box">
+                <form method="GET">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        placeholder="🔍 Search by user name..." 
+                        value="{{ search_query }}"
+                        autocomplete="off"
+                    >
+                </form>
+            </div>
+            
+            {% if search_query %}
+            <div class="no-passes">No users found matching "{{ search_query }}"</div>
+            {% else %}
+            <div class="no-passes">No passes generated yet</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        // Real-time search filtering
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="search"]');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    const passItems = document.querySelectorAll('.pass-item');
+                    let visibleCount = 0;
+                    
+                    passItems.forEach(function(item) {
+                        const userName = item.querySelector('.pass-info div:first-child').textContent.toLowerCase();
+                        if (userName.includes(searchTerm)) {
+                            item.style.display = '';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                    
+                    // Update search results info
+                    let searchInfo = document.querySelector('.search-results-info');
+                    if (searchTerm && visibleCount === 0) {
+                        if (!searchInfo) {
+                            searchInfo = document.createElement('div');
+                            searchInfo.className = 'search-results-info';
+                            searchInput.parentElement.parentElement.appendChild(searchInfo);
+                        }
+                        searchInfo.textContent = `No users found matching "${searchTerm}"`;
+                        searchInfo.style.display = 'block';
+                    } else if (searchInfo) {
+                        searchInfo.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

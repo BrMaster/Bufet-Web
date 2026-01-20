@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generated</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        h1 {
+            color: #28a745;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .info-box {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            text-align: left;
+        }
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+        .label {
+            color: #999;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .value {
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+        #qr-code {
+            margin: 30px auto;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .btn-copy {
+            background: #28a745;
+            color: white;
+        }
+        .btn-back {
+            background: #667eea;
+            color: white;
+        }
+        .btn-print {
+            background: #17a2b8;
+            color: white;
+            grid-column: span 2;
+        }
+        .copy-feedback {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 6px;
+            font-size: 14px;
+            animation: fadeInOut 2s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .reset-notice {
+            background: #d1ecf1;
+            border: 1px solid #0c5460;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if is_reset %}
+        <h1>🔄 QR Code Reset!</h1>
+        <p class="subtitle">Pass ID: {{ pass_id }}</p>
+        
+        <div class="reset-notice">
+            <strong>✓ Password Reset Successful!</strong><br>
+            The old QR code has been invalidated. The user must use this new code. Usage count has been reset to 0.
+        </div>
+        {% else %}
+        <h1>✓ QR Code Generated!</h1>
+        <p class="subtitle">Pass ID: {{ pass_id }}</p>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This raw code will be shown only once. Save it in a secure location. The code will be hashed in the database for security.
+        </div>
+        {% endif %}
+        
+        <div class="info-box">
+            <div class="info-item">
+                <div class="label">User Identifier</div>
+                <div class="value">{{ user_identifier }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Raw Code</div>
+                <div class="value" id="raw-code">{{ raw_code }}</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Uses</div>
+                <div class="value">Unlimited ∞</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Expires At</div>
+                <div class="value">{{ expires_at }}</div>
+            </div>
+        </div>
+        
+        <div id="qr-code"></div>
+        
+        <div id="copy-feedback" class="copy-feedback">
+            Code copied to clipboard!
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-copy" onclick="copyCode()">Copy Code</button>
+            <button class="btn-print" onclick="window.print()">Print QR</button>
+            <button class="btn-back" onclick="window.history.back()">Back</button>
+        </div>
+    </div>
+    
+    <script>
+        // Generate QR code from raw code
+        const rawCode = document.getElementById('raw-code').textContent.trim();
+        new QRCode(document.getElementById('qr-code'), {
+            text: rawCode,
+            width: 256,
+            height: 256,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        function copyCode() {
+            const code = rawCode;
+            navigator.clipboard.writeText(code).then(() => {
+                const feedback = document.getElementById('copy-feedback');
+                feedback.style.display = 'block';
+                setTimeout(() => {
+                    feedback.style.display = 'none';
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy code');
+            });
+        }
+    </script>
+</body>
+</html>

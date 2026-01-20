@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-w6%t(o67omdm9+m8*rotbz-8x#_pkjz3f7$w0h-+f_bz4^v_1r
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['alpha.argonix.eu', 'localhost', '127.0.0.1', '[::1]', '192.168.25.232']
+ALLOWED_HOSTS = ['alpha.argonix.eu', 'localhost', '127.0.0.1', '[::1]', '192.168.25.232', '192.168.1.118']
 
 
 # Application definition
@@ -117,3 +117,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Caching for rate limiting
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# Session Security Settings
+SESSION_COOKIE_SECURE = True  # Only send over HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access
+SESSION_COOKIE_SAMESITE = 'Strict'  # Prevent CSRF
+SESSION_COOKIE_AGE = 300  # 5 minutes default
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on each request
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
