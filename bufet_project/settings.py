@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-w6%t(o67omdm9+m8*rotbz-8x#_pkjz3f7$w0h-+f_bz4^v_1r
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['alpha.argonix.eu', 'localhost', '127.0.0.1', '[::1]']
+ALLOWED_HOSTS = ['alpha.argonix.eu', 'localhost', '127.0.0.1', '[::1]', '192.168.25.232']
 
 
 # Application definition
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     'main',  # Main application
 ]
 
@@ -55,7 +56,7 @@ ROOT_URLCONF = 'bufet_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
