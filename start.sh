@@ -1,33 +1,31 @@
 #!/bin/bash
-
-# Bufet Web Server Startup Script for Linux
-
-# Exit on error
 set -e
 
 echo "Starting Bufet Web Server..."
 
-# Activate virtual environment if it exists
+cd "$(dirname "$0")"
+
 if [ -d "venv" ]; then
-    echo "Activating virtual environment..."
     source venv/bin/activate
 fi
 
-# Install dependencies if needed
-echo "Installing dependencies..."
+echo "Updating code from GitHub..."
+
+BRANCH="main"
+
+# Prevent git from hanging forever
+export GIT_TERMINAL_PROMPT=0
+
+git fetch origin --prune
+git reset --hard origin/$BRANCH
+git clean -fd
+
+echo "Git update complete."
+
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Apply database migrations
-echo "Applying migrations..."
-python manage.py migrate
+python manage.py migrate --noinput
 
-# Create superuser if needed (interactive)
-# python manage.py createsuperuser
-
-# Start the development server
-echo "Starting Django development server..."
+echo "Starting Django server..."
 python manage.py runserver 0.0.0.0:8000
-
-# For production with Gunicorn, uncomment below and ensure gunicorn is in requirements.txt:
-# echo "Starting server with Gunicorn..."
-# gunicorn bufet_project.wsgi:application --bind 0.0.0.0:8000
