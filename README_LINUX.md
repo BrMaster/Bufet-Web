@@ -15,7 +15,7 @@ This script will:
 3. Apply database migrations
 4. Start the Django development server on `0.0.0.0:8000`
 
-## Manual Startup
+## Manual Startup - Development
 
 ```bash
 # 1. Activate virtual environment
@@ -36,6 +36,22 @@ python manage.py runserver 0.0.0.0:8000
 
 The application will be available at: `http://localhost:8000/`
 Admin panel: `http://localhost:8000/admin/`
+
+## HTTPS with mkcert (For Camera Access)
+
+```bash
+# Install mkcert
+sudo apt-get install libnss3-tools  # For Linux
+# or use brew on macOS: brew install mkcert
+# or download from https://github.com/FiloSottile/mkcert/releases
+
+# Create local CA and certificate
+mkcert -install
+mkcert localhost 127.0.0.1 192.168.x.x  # Replace with your IP
+
+# Run development server with HTTPS
+python manage.py runserver_plus 0.0.0.0:8000 --cert-file localhost+2.pem --key-file localhost+2-key.pem
+```
 
 ## Production Deployment with Gunicorn
 
@@ -71,6 +87,13 @@ sudo systemctl enable bufet
 sudo systemctl start bufet
 sudo systemctl status bufet
 ```
+
+## Dependencies
+
+- Django 6.0.1+ - Web framework
+- django-extensions - Extended management commands including runserver_plus
+- Werkzeug - WSGI toolkit for development server
+- pyOpenSSL - SSL/TLS support for HTTPS
 
 ## Deactivate Virtual Environment
 
