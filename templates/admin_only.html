@@ -59,9 +59,13 @@
             border-radius: 8px;
             font-weight: 600;
             transition: transform 0.2s;
+            margin: 5px;
         }
         a:hover {
             transform: translateY(-2px);
+        }
+        a.secondary {
+            background: #4CAF50;
         }
     </style>
 </head>
@@ -72,6 +76,7 @@
         <div class="error-code">Forbidden</div>
         <p>You do not have permission to access this page. Only administrators can generate QR codes.</p>
         <a href="/">Go Home</a>
+        <a href="/login/" class="secondary">Login to Admin Panel</a>
     </div>
 </body>
 </html>

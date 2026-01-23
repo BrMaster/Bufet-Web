@@ -1,8 +1,13 @@
 from django.contrib import admin
 from django.utils import timezone
 from datetime import timedelta
-from .models import QRCodePass
-
+from .models import QRCodePass, FoodItem
+@admin.register(FoodItem)
+class FoodItemAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price', 'stock_count', 'is_available', 'updated_at')
+    list_filter = ('is_available', 'created_at')
+    search_fields = ('name', 'description')
+    list_editable = ('price', 'stock_count', 'is_available')
 @admin.register(QRCodePass)
 class QRCodePassAdmin(admin.ModelAdmin):
     list_display = ('id', 'user_identifier', 'created_at', 'expires_at', 'is_active', 'use_count')

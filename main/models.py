@@ -4,6 +4,22 @@ from django.contrib.auth.hashers import make_password, check_password
 import secrets
 from datetime import timedelta
 
+class FoodItem(models.Model):
+    name = models.CharField(max_length=200)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock_count = models.IntegerField(default=0)
+    description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='food_items/', blank=True, null=True)
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} - ${self.price}"
+
 class QRCodePass(models.Model):
     code_hash = models.CharField(max_length=255, unique=True)  # Hashed QR code
     created_at = models.DateTimeField(auto_now_add=True)

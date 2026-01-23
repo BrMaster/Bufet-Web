@@ -29,9 +29,29 @@
         }
         h1 {
             color: #333;
-            margin-bottom: 30px;
-            text-align: center;
+            margin: 0;
             font-size: 28px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .logout-btn {
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.2s;
+            white-space: nowrap;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
         }
         .form-group {
             margin-bottom: 20px;
@@ -171,7 +191,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Generate QR Code Pass</h1>
+        <div class="header">
+            <h1>🔐 Generate QR Code Pass</h1>
+            <a href="/admin-logout/" class="logout-btn">Logout</a>
+        </div>
         
         {% if error %}
         <div class="error-message">

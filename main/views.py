@@ -4,9 +4,10 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.utils import timezone
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from datetime import datetime
 import json
-from .models import QRCodePass
+from .models import QRCodePass, FoodItem, FoodItem
 
 
 def home(request):
@@ -30,6 +31,30 @@ def logged_in(request):
 	# No valid session, show QR scanner
 	return render(request, "logged_in.html")
 
+
+def admin_login(request):
+	"""Admin login view"""
+	if request.user.is_authenticated:
+		return redirect('/generate-qr/')
+	
+	if request.method == 'POST':
+		username = request.POST.get('username')
+		password = request.POST.get('password')
+		user = authenticate(request, username=username, password=password)
+		
+		if user is not None:
+			auth_login(request, user)
+			return redirect('/generate-qr/')
+		else:
+			return render(request, 'qr_generator_login.html', {'error': 'Invalid username or password'})
+	
+	return render(request, 'qr_generator_login.html')
+
+
+def admin_logout(request):
+	"""Admin logout view"""
+	auth_logout(request)
+	return redirect('/')
 
 def logout(request):
 	"""Log out user by clearing session"""
@@ -162,11 +187,15 @@ def success(request):
 	# Get user identifier from session
 	user_identifier = request.session.get('user_identifier', 'Guest')
 	
+	# Get all available food items
+	food_items = FoodItem.objects.filter(is_available=True).order_by('name')
+	
 	# Don't clear the session - let it expire naturally after 5 minutes
 	context = {
 		'user_identifier': user_identifier,
 		'remaining_minutes': remaining_minutes,
-		'remaining_seconds': remaining_secs
+		'remaining_seconds': remaining_secs,
+		'food_items': food_items
 	}
 	
 	return render(request, 'success.html', context)
