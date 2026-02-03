@@ -15,4 +15,5 @@ urlpatterns = [
     path('payments/stripe-cancel/', views.stripe_cancel, name='stripe_cancel'),
     path('payment-error/', views.payment_error, name='payment_error'),
     path('generate-qr/', views.generate_qr, name='generate_qr'),
+    path('admin/orders/', views.admin_orders, name='admin_orders'),
 ]
