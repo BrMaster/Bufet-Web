@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Sum
 from django.conf import settings
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -471,3 +472,43 @@ def generate_qr(request):
 		'passes': all_passes,
 		'search_query': search_query
 	})
+
+
+def admin_orders(request):
+	"""Admin-only orders panel"""
+	if not request.user.is_staff:
+		return render(request, 'admin_only.html', status=403)
+
+	status_filter = request.GET.get('status', '').strip()
+	payment_filter = request.GET.get('payment', '').strip()
+	search_query = request.GET.get('search', '').strip()
+
+	orders = Order.objects.all().prefetch_related('items', 'items__food_item')
+	if status_filter:
+		orders = orders.filter(status=status_filter)
+	if payment_filter:
+		orders = orders.filter(payment_status=payment_filter)
+	if search_query:
+		if search_query.isdigit():
+			orders = orders.filter(id=int(search_query))
+		else:
+			orders = orders.filter(user_identifier__icontains=search_query)
+
+	orders = orders.order_by('-created_at')
+
+	all_orders = Order.objects.all()
+	paid_total = all_orders.filter(payment_status='paid').aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
+	pending_count = all_orders.filter(payment_status='pending').count()
+	paid_count = all_orders.filter(payment_status='paid').count()
+
+	context = {
+		'orders': orders,
+		'status_filter': status_filter,
+		'payment_filter': payment_filter,
+		'search_query': search_query,
+		'paid_total': paid_total,
+		'pending_count': pending_count,
+		'paid_count': paid_count,
+		'payment_statuses': Order.PAYMENT_STATUSES,
+	}
+	return render(request, 'admin_orders.html', context)

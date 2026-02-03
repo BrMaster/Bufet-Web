@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Orders</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid transparent;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-color: #334155;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .panel {
+            background: #111827;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #1f2937;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: #0b1220;
+            border-radius: 14px;
+            padding: 16px;
+            border: 1px solid #1f2937;
+        }
+        .card h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        .card p {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .filters input,
+        .filters select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            background: #0b1220;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        .filters button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: none;
+            background: #6366f1;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .order {
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: #0b1220;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .order-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #cbd5f5;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge-paid {
+            background: rgba(34, 197, 94, 0.18);
+            color: #22c55e;
+        }
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.18);
+            color: #f59e0b;
+        }
+        .badge-failed {
+            background: rgba(239, 68, 68, 0.18);
+            color: #ef4444;
+        }
+        .items {
+            border-top: 1px solid #1f2937;
+            padding-top: 12px;
+            display: grid;
+            gap: 8px;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+        .empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px 0;
+            font-style: italic;
+        }
+        @media (max-width: 900px) {
+            .filters {
+                grid-template-columns: 1fr;
+            }
+            .order-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="title">📋 Admin Orders</div>
+            <div class="actions">
+                <a class="btn btn-secondary" href="/generate-qr/">QR Passes</a>
+                <a class="btn btn-danger" href="/admin-logout/">Logout</a>
+            </div>
+        </div>
+
+        <div class="summary">
+            <div class="card">
+                <h3>Total Paid</h3>
+                <p>€{{ paid_total }}</p>
+            </div>
+            <div class="card">
+                <h3>Paid Orders</h3>
+                <p>{{ paid_count }}</p>
+            </div>
+            <div class="card">
+                <h3>Pending Orders</h3>
+                <p>{{ pending_count }}</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <form class="filters" method="GET">
+                <input type="text" name="search" placeholder="Search by order ID or user" value="{{ search_query }}">
+                <select name="status">
+                    <option value="">All statuses</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+                <select name="payment">
+                    <option value="">All payments</option>
+                    {% for value, label in payment_statuses %}
+                        <option value="{{ value }}" {% if payment_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Filter</button>
+            </form>
+
+            {% if orders %}
+                {% for order in orders %}
+                <div class="order">
+                    <div class="order-header">
+                        <div class="order-meta">
+                            <strong>#{{ order.id }}</strong>
+                            <span>👤 {{ order.user_identifier|default:"Guest" }}</span>
+                            <span>🕒 {{ order.created_at|date:"Y-m-d H:i" }}</span>
+                            <span>💳 {{ order.get_payment_method_display }}</span>
+                            <span>💶 €{{ order.total_amount }}</span>
+                        </div>
+                        <div>
+                            {% if order.payment_status == 'paid' %}
+                                <span class="badge badge-paid">Paid</span>
+                            {% elif order.payment_status == 'pending' %}
+                                <span class="badge badge-pending">Pending</span>
+                            {% else %}
+                                <span class="badge badge-failed">{{ order.get_payment_status_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="items">
+                        {% for item in order.items.all %}
+                        <div class="item-row">
+                            <span>{{ item.food_item.name }} x{{ item.quantity }}</span>
+                            <span>€{{ item.unit_price }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="item-row">No items</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty">No orders found.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
