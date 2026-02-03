@@ -203,6 +203,119 @@
       -webkit-mask-size: 100% 100%;
       mask-size: 100% 100%;
     }
+
+    /* Success animation overlay */
+    .success-overlay {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms ease;
+      z-index: 20;
+    }
+    .success-overlay.visible {
+      opacity: 1;
+      pointer-events: none;
+    }
+    .success-modal {
+      width: 148px;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      background: transparent;
+      border-radius: 20px;
+      box-shadow: none;
+      padding: 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      transform: translateY(8px) scale(0.98);
+      transition: transform 180ms ease;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+    }
+    .success-overlay.visible .success-modal {
+      transform: translateY(0) scale(1);
+    }
+  .success-title, .success-subtitle { display: none; }
+    /* 1:1 success badge (ring + animated check) */
+    .success-badge {
+      width: 104px;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto;
+      position: relative;
+      transform: scale(0.9);
+    }
+    .success-badge svg,
+    .success-badge circle,
+    .success-badge path,
+    .success-badge * {
+      fill: none !important;
+    }
+    .success-overlay.visible .success-badge {
+      animation: pop 520ms cubic-bezier(.2, .9, .2, 1) both;
+    }
+    .success-badge svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .badge-ring {
+      fill: none;
+  stroke: #00e5d4;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 290;
+      stroke-dashoffset: 290;
+  filter: none;
+    }
+    .badge-check {
+      fill: none;
+  stroke: #00e5d4;
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+    }
+    .success-overlay.visible .badge-ring {
+  animation: ring 560ms ease-out forwards;
+    }
+    .success-overlay.visible .badge-check {
+  animation: check 460ms 240ms ease-out forwards;
+    }
+    @keyframes ring {
+      0% { stroke-dashoffset: 290; opacity: 0.9; }
+      100% { stroke-dashoffset: 0; opacity: 1; }
+    }
+    @keyframes check {
+      0% { stroke-dashoffset: 80; opacity: 0; }
+      20% { opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; }
+    }
+    @keyframes pop {
+      0% { transform: scale(0.65); }
+      55% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+  /* Confetti removed: it can cause tinted/filled artifacts behind the badge on some browsers */
+
+    @media (prefers-reduced-motion: reduce) {
+      .scan-line { animation: none; }
+      .success-modal, .success-overlay { transition: none; }
+  .success-overlay.visible .success-badge { animation: none; transform: scale(1); }
+  .badge-ring, .badge-check { animation: none !important; stroke-dashoffset: 0; opacity: 1; }
+  /* confetti removed */
+    }
   </style>
 </head>
 <body>
@@ -219,6 +332,16 @@
           <div class="scan-line"></div>
         </div>
       </div>
+      <div id="success-overlay" class="success-overlay" aria-hidden="true">
+        <div class="success-modal" role="dialog" aria-modal="true" aria-label="Success">
+          <div class="success-badge" aria-hidden="true">
+            <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" fill="none">
+              <circle class="badge-ring" cx="50" cy="50" r="42" fill="none"></circle>
+              <path class="badge-check" d="M30 52 L44 66 L70 38" fill="none"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
     <canvas id="canvas" style="display: none;"></canvas>
     <div id="status" class="status scanning">🔍 Requesting camera access...</div>
@@ -229,9 +352,24 @@
       <input id="qr-upload" type="file" accept="image/*" style="display: none;" />
     </div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
     let scannedData = null;
+
+    function showSuccessAnimation() {
+      const overlay = document.getElementById('success-overlay');
+      if (!overlay) return;
+      overlay.classList.add('visible');
+      overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideScannerOverlay() {
+      const scannerOverlay = document.querySelector('.scanner-overlay');
+      if (scannerOverlay) scannerOverlay.style.display = 'none';
+      const videoEl = document.getElementById('camera');
+      if (videoEl) videoEl.style.filter = 'brightness(0.82)';
+    }
     
     async function saveQRToDatabase(data) {
       try {
@@ -301,9 +439,10 @@
                 if (result && result.valid) {
                   resultEl.innerHTML = `<strong>✓ Access Granted!</strong><br>Welcome to the buffet`;
                   resultEl.className = 'result success';
-                  statusEl.innerHTML = '✓ Valid QR code! Redirecting...';
-                  statusEl.className = 'status success';
+                  statusEl.style.display = 'none';
                   resultEl.style.display = 'block';
+                  hideScannerOverlay();
+                  showSuccessAnimation();
                   // Redirect to success page after 1 second
                   setTimeout(() => {
                     window.location.href = result.redirect_url;
@@ -357,9 +496,10 @@
               if (result && result.valid) {
                 resultEl.innerHTML = `<strong>✓ Access Granted!</strong><br>Welcome to the buffet`;
                 resultEl.className = 'result success';
-                statusEl.innerHTML = '✓ Valid QR code! Redirecting...';
-                statusEl.className = 'status success';
+                statusEl.style.display = 'none';
                 resultEl.style.display = 'block';
+                hideScannerOverlay();
+                showSuccessAnimation();
                 setTimeout(() => {
                   window.location.href = result.redirect_url;
                 }, 1000);
