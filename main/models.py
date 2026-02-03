@@ -18,7 +18,7 @@ class FoodItem(models.Model):
         ordering = ['name']
     
     def __str__(self):
-        return f"{self.name} - ${self.price}"
+        return f"{self.name} - €{self.price}"
 
 class QRCodePass(models.Model):
     code_hash = models.CharField(max_length=255, unique=True)  # Hashed QR code
@@ -64,3 +64,44 @@ class QRCodePass(models.Model):
         self.use_count += 1
         self.used_at = timezone.now()
         self.save()
+
+
+class Order(models.Model):
+    PAYMENT_METHODS = (
+        ('stripe', 'Stripe'),
+        ('in_person', 'In Person'),
+    )
+    PAYMENT_STATUSES = (
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    user_identifier = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='pending')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='in_person')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUSES, default='pending')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    stripe_session_id = models.CharField(max_length=255, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Order #{self.id} - {self.total_amount}"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    food_item = models.ForeignKey(FoodItem, on_delete=models.PROTECT)
+    quantity = models.IntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.food_item.name} x{self.quantity}"

@@ -1,13 +1,17 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.db import transaction
+from django.conf import settings
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
 from django.utils import timezone
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from datetime import datetime
+from decimal import Decimal
+import stripe
 import json
-from .models import QRCodePass, FoodItem, FoodItem
+from .models import QRCodePass, FoodItem, Order, OrderItem
 
 
 def home(request):
@@ -199,6 +203,199 @@ def success(request):
 	}
 	
 	return render(request, 'success.html', context)
+
+
+def _validate_cart(items):
+	item_map = {}
+	for item in items:
+		item_id = item.get('id')
+		qty = item.get('quantity')
+		if not item_id or not isinstance(qty, int) or qty < 1:
+			raise ValueError('Invalid cart item')
+		item_map[item_id] = qty
+
+	food_items = FoodItem.objects.filter(id__in=item_map.keys(), is_available=True)
+	food_by_id = {fi.id: fi for fi in food_items}
+
+	if len(food_by_id) != len(item_map):
+		raise ValueError('Some items are unavailable')
+
+	for item_id, qty in item_map.items():
+		food = food_by_id.get(item_id)
+		if not food or food.stock_count < qty:
+			raise ValueError(f'Insufficient stock for {food.name if food else "item"}')
+
+	return item_map, food_by_id
+
+
+def _build_order_from_items(items, user_identifier, payment_method, payment_status='pending', status='pending', paid_at=None):
+	item_map, food_by_id = _validate_cart(items)
+	user_identifier = user_identifier or 'Guest'
+	total_amount = Decimal('0.00')
+
+	with transaction.atomic():
+		order = Order.objects.create(
+			user_identifier=user_identifier,
+			payment_method=payment_method,
+			payment_status=payment_status,
+			status=status,
+			paid_at=paid_at,
+			total_amount=0
+		)
+		for item_id, qty in item_map.items():
+			food = food_by_id[item_id]
+			unit_price = Decimal(str(food.price))
+			OrderItem.objects.create(
+				order=order,
+				food_item=food,
+				quantity=qty,
+				unit_price=unit_price
+			)
+			total_amount += unit_price * qty
+			food.stock_count = max(0, food.stock_count - qty)
+			food.save(update_fields=['stock_count'])
+		order.total_amount = total_amount
+		order.save(update_fields=['total_amount'])
+
+	return order, total_amount
+
+
+@require_http_methods(["POST"])
+def create_order(request):
+	"""Create a new order from cart items"""
+	if not request.session.get('qr_authenticated'):
+		return JsonResponse({'success': False, 'message': 'Not authenticated'}, status=403)
+
+	try:
+		data = json.loads(request.body)
+		items = data.get('items', [])
+		payment_method = data.get('payment_method', 'in_person')
+		if not items:
+			return JsonResponse({'success': False, 'message': 'Cart is empty'}, status=400)
+		if payment_method not in ['in_person']:
+			return JsonResponse({'success': False, 'message': 'Invalid payment method'}, status=400)
+
+		user_identifier = request.session.get('user_identifier', 'Guest')
+		order, total_amount = _build_order_from_items(items, user_identifier, payment_method)
+
+		return JsonResponse({
+			'success': True,
+			'order_id': order.id,
+			'total_amount': f"{total_amount:.2f}"
+		})
+	except json.JSONDecodeError:
+		return JsonResponse({'success': False, 'message': 'Invalid request format'}, status=400)
+	except ValueError as e:
+		return JsonResponse({'success': False, 'message': str(e)}, status=400)
+	except Exception as e:
+		print(f"Order Error: {str(e)}")
+		return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_http_methods(["POST"])
+def create_stripe_session(request):
+	"""Create a Stripe Checkout session for the current cart"""
+	if not request.session.get('qr_authenticated'):
+		return JsonResponse({'success': False, 'message': 'Not authenticated'}, status=403)
+
+	if not settings.STRIPE_SECRET_KEY:
+		return JsonResponse({'success': False, 'message': 'Stripe is not configured'}, status=500)
+
+	try:
+		data = json.loads(request.body)
+		items = data.get('items', [])
+		if not items:
+			return JsonResponse({'success': False, 'message': 'Cart is empty'}, status=400)
+
+		user_identifier = request.session.get('user_identifier', 'Guest')
+		stripe.api_key = settings.STRIPE_SECRET_KEY
+		item_map, food_by_id = _validate_cart(items)
+		line_items = []
+		for item_id, qty in item_map.items():
+			food = food_by_id[item_id]
+			line_items.append({
+				'price_data': {
+					'currency': 'eur',
+					'product_data': {
+						'name': food.name,
+					},
+					'unit_amount': int(Decimal(food.price) * 100),
+				},
+				'quantity': qty,
+			})
+
+		success_url = request.build_absolute_uri(f"/payments/stripe-success/?session_id={{CHECKOUT_SESSION_ID}}")
+		cancel_url = request.build_absolute_uri("/payments/stripe-cancel/")
+		session = stripe.checkout.Session.create(
+			mode='payment',
+			line_items=line_items,
+			success_url=success_url,
+			cancel_url=cancel_url,
+			metadata={'user_identifier': str(user_identifier)}
+		)
+
+		cache.set(
+			f"stripe_session_{session.id}",
+			{'items': items, 'user_identifier': user_identifier},
+			3600
+		)
+
+		return JsonResponse({
+			'success': True,
+			'checkout_url': session.url
+		})
+	except json.JSONDecodeError:
+		return JsonResponse({'success': False, 'message': 'Invalid request format'}, status=400)
+	except ValueError as e:
+		return JsonResponse({'success': False, 'message': str(e)}, status=400)
+	except Exception as e:
+		print(f"Stripe Error: {str(e)}")
+		return JsonResponse({'success': False, 'message': 'An error occurred'}, status=500)
+
+
+@require_http_methods(["GET"])
+def stripe_success(request):
+	"""Handle Stripe success redirect and mark order as paid"""
+	if not settings.STRIPE_SECRET_KEY:
+		return redirect('/payment-error/')
+
+	session_id = request.GET.get('session_id')
+	if not session_id:
+		return redirect('/payment-error/')
+
+	try:
+		stripe.api_key = settings.STRIPE_SECRET_KEY
+		session = stripe.checkout.Session.retrieve(session_id)
+		pending = cache.get(f"stripe_session_{session.id}")
+		if not pending:
+			return redirect('/payment-error/')
+
+		order, total_amount = _build_order_from_items(
+			pending.get('items', []),
+			pending.get('user_identifier', 'Guest'),
+			'stripe',
+			payment_status='paid',
+			status='paid',
+			paid_at=timezone.now()
+		)
+		order.stripe_session_id = session.id
+		order.save(update_fields=['stripe_session_id'])
+		cache.delete(f"stripe_session_{session.id}")
+		return redirect(f'/success/?payment=success&order_id={order.id}')
+	except Exception as e:
+		print(f"Stripe Success Error: {str(e)}")
+		return redirect('/payment-error/')
+
+
+@require_http_methods(["GET"])
+def stripe_cancel(request):
+	"""Stripe cancel redirect"""
+	return redirect('/success/?payment=cancelled')
+
+
+def payment_error(request):
+	"""Payment error page"""
+	return render(request, 'payment_error.html')
 
 
 @require_http_methods(["GET", "POST"])

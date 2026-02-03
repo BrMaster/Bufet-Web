@@ -150,6 +150,46 @@
       color: #721c24;
       border-left-color: #dc3545;
     }
+    .alt-actions {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #999;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+    .divider::before,
+    .divider::after {
+      content: "";
+      height: 1px;
+      background: #eee;
+      flex: 1;
+    }
+    .upload-button {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #d9e2ff;
+      background: #f0f4ff;
+      color: #2b4ea2;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .upload-button:hover {
+      box-shadow: 0 10px 20px rgba(40,72,160,0.12);
+      transform: translateY(-1px);
+    }
+    .upload-button:active {
+      transform: translateY(0);
+      box-shadow: 0 6px 14px rgba(40,72,160,0.1);
+    }
     .material-symbols--qr-code-scanner-rounded {
       display: inline-block;
       width: 32px;
@@ -183,6 +223,11 @@
     <canvas id="canvas" style="display: none;"></canvas>
     <div id="status" class="status scanning">🔍 Requesting camera access...</div>
     <div id="result" class="result"></div>
+    <div id="upload" class="alt-actions">
+      <div class="divider">or</div>
+      <button id="upload-btn" type="button" class="upload-button">Upload QR photo</button>
+      <input id="qr-upload" type="file" accept="image/*" style="display: none;" />
+    </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
@@ -283,6 +328,76 @@
         statusEl.className = 'status error';
       }
     }
+
+    function decodeImageFile(file) {
+      const statusEl = document.getElementById('status');
+      const resultEl = document.getElementById('result');
+      const canvasEl = document.getElementById('canvas');
+      const ctx = canvasEl.getContext('2d');
+
+      statusEl.textContent = '🖼️ Reading image...';
+      statusEl.className = 'status scanning';
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const img = new Image();
+        img.onload = function () {
+          canvasEl.width = img.width;
+          canvasEl.height = img.height;
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+
+          const imageData = ctx.getImageData(0, 0, img.width, img.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code && code.data) {
+            statusEl.textContent = '✓ QR Code found! Verifying...';
+            statusEl.className = 'status success';
+
+            saveQRToDatabase(code.data).then(result => {
+              if (result && result.valid) {
+                resultEl.innerHTML = `<strong>✓ Access Granted!</strong><br>Welcome to the buffet`;
+                resultEl.className = 'result success';
+                statusEl.innerHTML = '✓ Valid QR code! Redirecting...';
+                statusEl.className = 'status success';
+                resultEl.style.display = 'block';
+                setTimeout(() => {
+                  window.location.href = result.redirect_url;
+                }, 1000);
+              } else {
+                resultEl.innerHTML = `<strong>✗ Invalid QR Code</strong><br>Code not recognized`;
+                resultEl.className = 'result error';
+                statusEl.innerHTML = '❌ QR code not recognized';
+                statusEl.className = 'status error';
+                resultEl.style.display = 'block';
+              }
+            });
+          } else {
+            statusEl.textContent = '❌ No QR code found in the image.';
+            statusEl.className = 'status error';
+          }
+        };
+        img.onerror = function () {
+          statusEl.textContent = '❌ Unable to read the image file.';
+          statusEl.className = 'status error';
+        };
+        img.src = event.target.result;
+      };
+      reader.onerror = function () {
+        statusEl.textContent = '❌ Failed to load the file.';
+        statusEl.className = 'status error';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    const uploadBtn = document.getElementById('upload-btn');
+    const uploadInput = document.getElementById('qr-upload');
+    uploadBtn.addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        decodeImageFile(file);
+      }
+    });
 
     startCamera();
   </script>

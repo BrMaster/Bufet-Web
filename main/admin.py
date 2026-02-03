@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 from datetime import timedelta
-from .models import QRCodePass, FoodItem
+from .models import QRCodePass, FoodItem, Order, OrderItem
 @admin.register(FoodItem)
 class FoodItemAdmin(admin.ModelAdmin):
     list_display = ('name', 'price', 'stock_count', 'is_available', 'updated_at')
@@ -40,3 +40,18 @@ class QRCodePassAdmin(admin.ModelAdmin):
             self.message_user(request, f'⚠️ SAVE THIS CODE - It will not be shown again: {raw_code}')
         else:
             super().save_model(request, obj, form, change)
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    readonly_fields = ('food_item', 'quantity', 'unit_price')
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user_identifier', 'created_at', 'status', 'payment_method', 'payment_status', 'total_amount')
+    list_filter = ('status', 'payment_method', 'payment_status', 'created_at')
+    search_fields = ('user_identifier',)
+    readonly_fields = ('created_at', 'total_amount', 'stripe_session_id', 'paid_at')
+    inlines = [OrderItemInline]
